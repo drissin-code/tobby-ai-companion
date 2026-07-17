@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tobby Assistant</title>
+    <style>
+        :root { --bg: #0a1a0a; --accent: #00ff88; --text: #e0ffe0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        .container { display: flex; flex-direction: column; height: 100vh; align-items: center; justify-content: space-between; }
+        .header { text-align: center; margin-top: 20px; }
+        .mascot { width: 180px; height: 180px; border-radius: 50%; border: 3px solid var(--accent); box-shadow: 0 0 20px var(--accent); object-fit: cover; }
+        .greeting { font-size: 1.5rem; margin-top: 15px; font-weight: 300; }
+        .chat-box { flex: 1; width: 80%; max-width: 800px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg { padding: 12px 18px; border-radius: 15px; max-width: 70%; line-height: 1.4; }
+        .user-msg { align-self: flex-end; background: #1a3a1a; border: 1px solid var(--accent); }
+        .tobby-msg { align-self: flex-start; background: #002200; border-left: 4px solid var(--accent); }
+        .input-area { width: 100%; background: #112211; padding: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        #input-field { width: 60%; background: #051005; border: 1px solid #1a5a1a; padding: 15px; color: white; border-radius: 30px; outline: none; }
+        #voice-btn { background: var(--accent); border: none; padding: 15px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+        #camera-preview { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/static/tobby.jpg" class="mascot" alt="Tobby">
+            <div class="greeting" id="main-greeting">Hey Drissin Sir, We Are Ready To Go! 🐾</div>
+        </div>
+
+        <div class="chat-box" id="chat-box"></div>
+
+        <video id="video" width="640" height="480" autoplay style="display:none;"></video>
+        <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+        <div class="input-area">
+            <input type="text" id="input-field" placeholder="Talk to Tobby...">
+            <button id="voice-btn">🎤</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const inputField = document.getElementById('input-field');
+
+        // Auto Mood Scan on Page Load
+        window.onload = async () => {
+            const video = document.getElementById('video');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+
+            setTimeout(() => {
+                const canvas = document.getElementById('canvas');
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const imageData = canvas.toDataURL('image/jpeg');
+                
+                // Send to server
+                fetch('/detect_mood', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ image: imageData })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    addMessage("Tobby", data.greeting);
+                    stream.getTracks().forEach(track => track.stop()); // Turn off camera
+                });
+            }, 3000); // 3-second scan
+        };
+
+        function addMessage(sender, text) {
+            const div = document.createElement('div');
+            div.className = `msg ${sender === 'Tobby' ? 'tobby-msg' : 'user-msg'}`;
+            div.innerText = text;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        inputField.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') {
+                const text = inputField.value;
+                addMessage("You", text);
+                inputField.value = '';
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: text })
+                })
+                .then(r => r.json())
+                .then(data => addMessage("Tobby", data.response));
+            }
+        });
+
+        document.getElementById('voice-btn').onclick = () => {
+            fetch('/voice_input').then(r => r.json()).then(data => {
+                addMessage("You", data.user);
+                addMessage("Tobby", data.response);
+            });
+        };
+    </script>
+</body>
+</html>

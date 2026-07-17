@@ -1,0 +1,12 @@
+{
+  "name": "tobby",
+  "version": "2.0.0",
+  "description": "Tobby Personal AI Companion",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

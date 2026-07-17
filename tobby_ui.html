@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tobby 2.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #050A0F;
+            color: #00FFD1;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Animated grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 255, 209, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 209, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+            animation: gridPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes gridPulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* Canvas for particles */
+        #particles {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+
+        /* Top bar */
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(0, 255, 209, 0.05);
+            border-bottom: 1px solid rgba(0, 255, 209, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 100;
+            -webkit-app-region: drag;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tobby-logo {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            color: #00FFD1;
+            text-shadow: 0 0 20px rgba(0, 255, 209, 0.8);
+        }
+
+        .version {
+            font-size: 10px;
+            color: rgba(0, 255, 209, 0.4);
+            letter-spacing: 2px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            -webkit-app-region: no-drag;
+        }
+
+        .time {
+            font-size: 13px;
+            color: rgba(0, 255, 209, 0.6);
+            letter-spacing: 2px;
+        }
+
+        .close-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #FF5F57;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.2);
+        }
+
+        /* Main layout */
+        .main {
+            position: relative;
+            z-index: 10;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 50px;
+        }
+
+        /* Tobby mascot */
+        .mascot-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .mascot-ring {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 255, 209, 0.3);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: ringPulse 2s ease-in-out infinite;
+        }
+
+        .mascot-ring-2 {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 209, 0.1);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: ringPulse 2s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes ringPulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.05);
+                opacity: 1;
+            }
+        }
+
+        .mascot {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, #1a4a6b, #050A0F);
+            border: 2px solid rgba(0, 255, 209, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            box-shadow:
+                0 0 30px rgba(0, 255, 209, 0.3),
+                0 0 60px rgba(0, 255, 209, 0.1),
+                inset 0 0 30px rgba(0, 255, 209, 0.05);
+            animation: mascotBreath 3s ease-in-out infinite;
+            position: relative;
+            z-index: 2;
+        }
+
+        @keyframes mascotBreath {
+
+            0%,
+            100% {
+                box-shadow: 0 0 30px rgba(0, 255, 209, 0.3), 0 0 60px rgba(0, 255, 209, 0.1);
+            }
+
+            50% {
+                box-shadow: 0 0 50px rgba(0, 255, 209, 0.6), 0 0 100px rgba(0, 255, 209, 0.2);
+            }
+        }
+
+        /* Status */
+        .status {
+            font-size: 12px;
+            letter-spacing: 4px;
+            color: rgba(0, 255, 209, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            margin-top: 110px;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00FF88;
+            margin-right: 8px;
+            animation: dotBlink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes dotBlink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.2;
+            }
+        }
+
+        /* Voice visualizer */
+        .visualizer {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 40px;
+            margin-bottom: 30px;
+        }
+
+        .bar {
+            width: 4px;
+            background: linear-gradient(to top, #00FFD1, #00BFFF);
+            border-radius: 2px;
+            animation: barIdle 1.5s ease-in-out infinite;
+            opacity: 0.4;
+        }
+
+        .bar:nth-child(1) {
+            animation-delay: 0s;
+            height: 8px;
+        }
+
+        .bar:nth-child(2) {
+            animation-delay: 0.1s;
+            height: 14px;
+        }
+
+        .bar:nth-child(3) {
+            animation-delay: 0.2s;
+            height: 20px;
+        }
+
+        .bar:nth-child(4) {
+            animation-delay: 0.3s;
+            height: 28px;
+        }
+
+        .bar:nth-child(5) {
+            animation-delay: 0.4s;
+            height: 35px;
+        }
+
+        .bar:nth-child(6) {
+            animation-delay: 0.5s;
+            height: 28px;
+        }
+
+        .bar:nth-child(7) {
+            animation-delay: 0.6s;
+            height: 20px;
+        }
+
+        .bar:nth-child(8) {
+            animation-delay: 0.7s;
+            height: 14px;
+        }
+
+        .bar:nth-child(9) {
+            animation-delay: 0.8s;
+            height: 8px;
+        }
+
+        @keyframes barIdle {
+
+            0%,
+            100% {
+                transform: scaleY(0.4);
+                opacity: 0.3;
+            }
+
+            50% {
+                transform: scaleY(1);
+                opacity: 0.6;
+            }
+        }
+
+        .visualizer.active .bar {
+            animation: barActive 0.3s ease-in-out infinite alternate;
+            opacity: 1;
+        }
+
+        @keyframes barActive {
+            from {
+                transform: scaleY(0.3);
+            }
+
+            to {
+                transform: scaleY(1);
+            }
+        }
+
+        /* Chat area */
+        .chat-area {
+            width: 600px;
+            max-height: 280px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 0 10px;
+            scrollbar-width: none;
+        }
+
+        .chat-area::-webkit-scrollbar {
+            display: none;
+        }
+
+        .message {
+            padding: 12px 18px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: slideIn 0.3s ease-out;
+            max-width: 85%;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.tobby {
+            background: rgba(0, 255, 209, 0.05);
+            border: 1px solid rgba(0, 255, 209, 0.15);
+            color: #C8E6F0;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user {
+            background: rgba(0, 191, 255, 0.08);
+            border: 1px solid rgba(0, 191, 255, 0.2);
+            color: #E0F4FF;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+            opacity: 0.5;
+        }
+
+        /* Input area */
+        .input-area {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .input-box {
+            flex: 1;
+            background: rgba(0, 255, 209, 0.05);
+            border: 1px solid rgba(0, 255, 209, 0.2);
+            border-radius: 25px;
+            padding: 14px 20px;
+            color: #C8E6F0;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-box:focus {
+            border-color: rgba(0, 255, 209, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 209, 0.1);
+        }
+
+        .input-box::placeholder {
+            color: rgba(0, 255, 209, 0.3);
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00FFD1, #00BFFF);
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(0, 255, 209, 0.4);
+        }
+
+        /* Corner HUD elements */
+        .hud-corner {
+            position: fixed;
+            font-size: 10px;
+            color: rgba(0, 255, 209, 0.25);
+            letter-spacing: 2px;
+            z-index: 50;
+        }
+
+        .hud-tl {
+            top: 60px;
+            left: 20px;
+        }
+
+        .hud-tr {
+            top: 60px;
+            right: 20px;
+            text-align: right;
+        }
+
+        .hud-bl {
+            bottom: 20px;
+            left: 20px;
+        }
+
+        .hud-br {
+            bottom: 20px;
+            right: 20px;
+            text-align: right;
+        }
+
+        .hud-corner div {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <!-- Top bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="tobby-logo">TOBBY</div>
+            <div class="version">v2.0 — PERSONAL AI</div>
+        </div>
+        <div class="topbar-right">
+            <div class="time" id="clock">00:00:00</div>
+            <button class="close-btn" onclick="window.close()"></button>
+        </div>
+    </div>
+
+    <!-- HUD corners -->
+    <div class="hud-corner hud-tl">
+        <div>SYS: ONLINE</div>
+        <div>CPU: NOMINAL</div>
+        <div>MEM: ACTIVE</div>
+    </div>
+
+    <div class="hud-corner hud-tr">
+        <div>TOBBY 2.0</div>
+        <div>DRISSIN SIR</div>
+        <div>SECURED</div>
+    </div>
+
+    <div class="hud-corner hud-bl">
+        <div>VOICE: READY</div>
+        <div>WAKE: WHISTLE</div>
+    </div>
+
+    <div class="hud-corner hud-br">
+        <div>PHASE 2</div>
+        <div>BUILD 001</div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main">
+
+        <div class="mascot-container">
+            <div class="mascot-ring-2"></div>
+            <div class="mascot-ring"></div>
+            <div class="mascot" id="mascot">🐾</div>
+        </div>
+
+        <div class="status">
+            <span class="status-dot"></span>
+            <span id="status-text">TOBBY IS READY</span>
+        </div>
+
+        <div class="visualizer" id="visualizer">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+
+        <div class="chat-area" id="chat"></div>
+
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+        <input class="input-box" id="input" type="text" placeholder="Type to Tobby Sir... or just whistle 🐾"
+            onkeydown="handleKey(event)" />
+        <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+
+    <script>
+        // Clock
+        function updateClock() {
+            const now = new Date()
+            const h = String(now.getHours()).padStart(2, '0')
+            const m = String(now.getMinutes()).padStart(2, '0')
+            const s = String(now.getSeconds()).padStart(2, '0')
+            document.getElementById('clock').textContent = `${h}:${m}:${s}`
+        }
+        setInterval(updateClock, 1000)
+        updateClock()
+
+        // Particles
+        const canvas = document.getElementById('particles')
+        const ctx = canvas.getContext('2d')
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+
+        const particles = []
+        for (let i = 0; i < 80; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                size: Math.random() * 2 + 0.5,
+                opacity: Math.random() * 0.4 + 0.1
+            })
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            particles.forEach(p => {
+                p.x += p.vx
+                p.y += p.vy
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1
+                ctx.beginPath()
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+                ctx.fillStyle = `rgba(0, 255, 209, ${p.opacity})`
+                ctx.fill()
+            })
+            requestAnimationFrame(animateParticles)
+        }
+        animateParticles()
+
+        // Chat
+        function addMessage(text, sender) {
+            const chat = document.getElementById('chat')
+            const msg = document.createElement('div')
+            msg.className = `message ${sender}`
+            msg.innerHTML = `
+    <div class="msg-label">${sender === 'tobby' ? '🐾 TOBBY' : '👤 DRISSIN SIR'}</div>
+    ${text}
+  `
+            chat.appendChild(msg)
+            chat.scrollTop = chat.scrollHeight
+
+            // Animate visualizer
+            if (sender === 'tobby') {
+                const viz = document.getElementById('visualizer')
+                viz.classList.add('active')
+                setTimeout(() => viz.classList.remove('active'), 2000)
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('input')
+            const text = input.value.trim()
+            if (!text) return
+            addMessage(text, 'user')
+            input.value = ''
+            setTimeout(() => {
+                addMessage("Claude API coming soon Sir! I'll give you proper responses very soon. 🐾", 'tobby')
+            }, 800)
+        }
+
+        function handleKey(e) {
+            if (e.key === 'Enter') sendMessage()
+        }
+
+        // Boot message
+        setTimeout(() => {
+            addMessage("Good to see you Drissin Sir! I am Tobby, your personal AI companion. Whistle anytime to wake me! 🐾", 'tobby')
+        }, 1000)
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight
+        })
+    </script>
+</body>
+
+</html>

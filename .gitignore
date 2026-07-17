@@ -1,0 +1,6 @@
+.env
+tobby_env/
+__pycache__/
+*.pyc
+tobby_memory.json
+node_modules/

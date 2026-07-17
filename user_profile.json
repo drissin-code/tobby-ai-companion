@@ -1,0 +1,15 @@
+{
+    "name": "Drissin",
+    "age": 18,
+    "education": "2nd year BCA student, AI specialization, Bharathiar University, Coimbatore",
+    "goal": "Becoming an AI/ML engineer, targeting MNCs like AMD and NVIDIA",
+    "location": "Thrissur/Coimbatore area, Kerala, India",
+    "languages": "English, Malayalam, and some Tamil",
+    "interests": [
+        "PC gaming, especially Rockstar titles like RDR2 and GTA V",
+        "live streaming",
+        "building AI projects"
+    ],
+    "current_project": "Building me, Tobby — his personal AI companion, using Gemini and Streamlit",
+    "personality_note": "Prefers direct, decisive answers over long explanations. Values consistency and building real things over just watching tutorials."
+}
