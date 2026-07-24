@@ -1,6 +1,25 @@
+# Environment & secrets
 .env
+*.env
+
+# Virtual environment
 tobby_env/
+
+# ChromaDB persistent data
+tobby_memory/
+tobby_memory.json
+
+# Python cache
 __pycache__/
 *.pyc
-tobby_memory.json
+
+# Node (for the HUD)
 node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+tobby_files/*.txt

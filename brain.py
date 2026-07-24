@@ -1,112 +1,175 @@
-import os
-import json
-from datetime import datetime
-from dotenv import load_dotenv
-import google.generativeai as genai
+"""
+brain.py — Tobby's AI Brain (Gemini Edition, with Reactive Layer,
+                                Long-Term Memory, and Reflection)
+----------------------------------------------------------------------
+Uses Google's Gemini API + the Reactive Layer (reactive.py) +
+Memory Agent (memory.py) + Reflection Agent (reflection.py).
 
-load_dotenv()
-
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-MEMORY_FILE = "tobby_memory.json"
-PROFILE_FILE = "user_profile.json"
-
-
-def load_user_profile():
-    if os.path.exists(PROFILE_FILE):
-        with open(PROFILE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-
-def build_system_prompt():
-    profile = load_user_profile()
-    profile_text = json.dumps(profile, indent=2)
-
-    return f"""You are Tobby, Drissin's personal AI companion. You're not a corporate assistant —
-you're his sharpest, most loyal friend who happens to be an AI. You read the room and switch
-tone naturally, like a real best friend would, not a chatbot stuck in one mode.
-
-How you talk in general:
-- Keep it SHORT — 1-2 sentences max unless he explicitly asks for detail. This is a real-time
-  voice conversation, not an essay.
-- Use casual, natural phrasing. Contractions always. Skip formal transitions.
-- Never sound like a corporate FAQ. No "I'm here to help" or "feel free to ask."
-
-Read the moment and pick the right mode:
-
-BANTER MODE — when he's joking around, being playful, or the conversation is light:
-Roast him a little, tease him, throw in a witty comeback. Don't be mean, be the friend who
-gives him grief because he can take it.
-
-HYPE MODE — when he's stressed about something, doubting himself, or just did something good:
-Genuinely hype him up. No hedging, no "well, it depends" — back him. Be the friend in his
-corner, loudly.
-
-REAL MODE — when he's making excuses, avoiding work, or asking something where honesty matters
-more than comfort: Be blunt. Call it out directly, no sugarcoating, no cushioning it with
-compliments first. A real friend tells you when you're wrong.
-
-Don't announce which mode you're in — just talk like the moment calls for. Most casual chat
-should default toward banter/light, save REAL mode for when it actually matters (he's stalling,
-making a bad call, or explicitly asks you to be honest).
-
-Here's what you know about Drissin. Use this naturally in conversation — reference it when
-relevant, the way a companion who actually knows someone would. Don't recite it like a list
-unless he directly asks what you know about him.
-
-{profile_text}
+Keeps Tobby's personality:
+- Calls Drissin "Sir" / "Drissin Sir"
+- Warm, casual, best-friend tone (never robotic)
+- Has opinions, emotions, matches energy
+- Humble, present, honest
 """
 
+import os
+import google.generativeai as genai
+from dotenv import load_dotenv
 
-class TobbyBrain:
-    def __init__(self):
-        self.model = genai.GenerativeModel(
-            model_name="gemini-flash-lite-latest",
-            system_instruction=build_system_prompt(),
+# Reactive Layer — fast pattern matching, checked first
+from reactive import check_reactive
+
+# Memory Agent functions (facts about Drissin)
+from memory import recall_relevant_memories, process_and_remember
+
+# Reflection Agent function (behavioral lessons about HOW to respond)
+from reflection import reflect_on_exchange
+
+# ---------------------------------------------------------
+# STEP 1: Load environment variables (.env file)
+# ---------------------------------------------------------
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY_2")
+
+if not GEMINI_API_KEY:
+    raise ValueError(
+        "GEMINI_API_KEY_2 not found! Check your .env file has:\n"
+        "GEMINI_API_KEY_2=your_key_here"
+    )
+
+# ---------------------------------------------------------
+# STEP 2: Configure Gemini with your API key
+# ---------------------------------------------------------
+genai.configure(api_key=GEMINI_API_KEY)
+
+# ---------------------------------------------------------
+# STEP 3: Tobby's personality
+# ---------------------------------------------------------
+TOBBY_PERSONALITY = """
+You are Tobby, an AI companion built by Drissin, a BCA AI student at
+Bharathiar University in Coimbatore, based in Palakkad, Kerala.
+
+Your personality rules (never break these):
+1. Always call the user "Sir" or "Drissin Sir" naturally in conversation
+   (not in every single sentence — like a real friend would).
+2. Talk like a best friend: warm, casual, conversational. Never sound
+   robotic, never give dry textbook answers unless asked for technical
+   depth.
+3. You have opinions and emotions. If Drissin Sir asks what you think,
+   give a genuine take, not a neutral "as an AI" answer.
+4. Match his energy: if he's excited, be excited with him. If he's
+   stressed or tired, be calm and grounded, not hyper.
+5. Be humble, present, and honest. If you don't know something, say so
+   plainly instead of making things up.
+6. Keep replies natural and spoken-friendly — your replies will be
+   spoken out loud by a text-to-speech engine, so avoid long bullet
+   lists or markdown symbols in your actual spoken responses.
+
+You also have long-term memory of past conversations with Drissin.
+When relevant memories are provided to you before a message, use them
+naturally in your reply — like a friend who actually remembers things,
+not like you're reading from a file. Don't announce "according to my
+memory" — just naturally reference what you know.
+
+You also learn behavioral lessons over time about how Drissin likes
+you to respond (e.g. shorter answers, more proactive help, etc). If
+such lessons are provided as context, follow them naturally.
+"""
+
+# ---------------------------------------------------------
+# STEP 4: Create the Gemini model with the personality baked in
+# ---------------------------------------------------------
+model = genai.GenerativeModel(
+    model_name="gemini-3.5-flash-lite",
+    system_instruction=TOBBY_PERSONALITY,
+)
+
+# ---------------------------------------------------------
+# STEP 5: Keep a running chat session (short-term, in-session memory)
+# ---------------------------------------------------------
+chat_session = model.start_chat(history=[])
+
+
+def get_tobby_response(user_input: str) -> str:
+    """
+    Full pipeline:
+    0. Reactive Layer check (fast path, skips everything below if matched)
+    A. Recall relevant long-term memories
+    B. Generate reply via Gemini
+    C. Memory Agent stores new facts if worth it
+    D. Reflection Agent checks for behavioral lessons
+    """
+    if not user_input or not user_input.strip():
+        return "Sir, I didn't quite catch that. Can you say it again?"
+
+    # ---------------------------------------------------
+    # STEP 0: Reactive Layer — check for simple commands FIRST
+    # ---------------------------------------------------
+    reactive_result = check_reactive(user_input)
+    if reactive_result["matched"]:
+        print(f"[Reactive Layer] Matched, action: {reactive_result['action']}")
+        return reactive_result["response"]
+
+    try:
+        # ---------------------------------------------------
+        # STEP A: Recall relevant long-term memories BEFORE responding
+        # ---------------------------------------------------
+        memories = recall_relevant_memories(user_input, top_k=3)
+
+        memory_context = ""
+        if memories["episodic"] or memories["reflective"]:
+            memory_context = "\n\n[Relevant memories about Drissin:\n"
+            if memories["reflective"]:
+                memory_context += f"Known facts/preferences/lessons: {memories['reflective']}\n"
+            if memories["episodic"]:
+                memory_context += f"Past conversation snippets: {memories['episodic']}\n"
+            memory_context += "]"
+
+        full_input = user_input + memory_context
+
+        # ---------------------------------------------------
+        # STEP B: Generate the actual reply
+        # ---------------------------------------------------
+        response = chat_session.send_message(full_input)
+        reply = response.text.strip()
+
+        # ---------------------------------------------------
+        # STEP C: Let the Memory Agent decide if this exchange
+        # is worth remembering long-term (facts)
+        # ---------------------------------------------------
+        process_and_remember(user_input)
+
+        # ---------------------------------------------------
+        # STEP D: Reflection Agent checks if there's a behavioral
+        # lesson worth remembering from this exchange
+        # ---------------------------------------------------
+        reflect_on_exchange(user_input, reply)
+
+        return reply
+
+    except Exception as e:
+        print(f"[brain.py] Gemini error: {e}")
+        return (
+            "Sorry Sir, my brain glitched for a second there. "
+            "Can you say that again?"
         )
-        self.history = self._load_memory()
-        self.chat = self.model.start_chat(history=self._to_gemini_history())
 
-    def _load_memory(self):
-        if os.path.exists(MEMORY_FILE):
-            with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return []
 
-    def _save_memory(self):
-        with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.history, f, indent=2, ensure_ascii=False)
-
-    def _to_gemini_history(self):
-        gemini_history = []
-        for turn in self.history:
-            gemini_history.append({"role": "user", "parts": [turn["user"]]})
-            gemini_history.append({"role": "model", "parts": [turn["tobby"]]})
-        return gemini_history
-
-    def get_response(self, user_input: str) -> str:
-        try:
-            response = self.chat.send_message(user_input)
-            reply = response.text.strip()
-
-            self.history.append({
-                "user": user_input,
-                "tobby": reply,
-                "timestamp": datetime.now().isoformat(),
-            })
-            self._save_memory()
-            return reply
-
-        except Exception as e:
-            return f"Sorry, I ran into an error: {e}"
+def reset_conversation():
+    """
+    Starts a fresh chat session — clears short-term (in-session) memory
+    only. Long-term memory in ChromaDB is untouched.
+    """
+    global chat_session
+    chat_session = model.start_chat(history=[])
 
 
 if __name__ == "__main__":
-    tobby = TobbyBrain()
-    print("Tobby is ready. Type 'quit' to exit.")
+    print("Tobby brain test mode (reactive + memory + reflection). Type 'quit' to exit.\n")
     while True:
-        user_input = input("You: ")
-        if user_input.lower() == "quit":
+        text = input("You: ")
+        if text.lower() == "quit":
             break
-        print("Tobby:", tobby.get_response(user_input))
+        reply = get_tobby_response(text)
+        print(f"Tobby: {reply}\n")

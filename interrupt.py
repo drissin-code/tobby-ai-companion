@@ -3,11 +3,31 @@ import threading
 
 recognizer = sr.Recognizer()
 recognizer.pause_threshold = 0.6
-recognizer.energy_threshold = 300
+# Raised energy_threshold from 300 -> 500 so it's less sensitive to
+# faint background noise, reducing false Whisper hallucinations.
+recognizer.energy_threshold = 500
 recognizer.dynamic_energy_threshold = True
 
 TRIGGER_PHRASES = ["hey listen", "listen wait",
                    "wait listen", "hey wait", "hold on", "hey tobby wait"]
+
+# Common Whisper hallucination phrases on silence/noise — if the
+# recognized text matches one of these closely, we ignore it instead
+# of treating it as real speech.
+HALLUCINATION_PATTERNS = [
+    "thanks for watching", "thank you for watching", "subscribe",
+    "bye bye", "you", ".", "", "the end", "thank you",
+]
+
+
+def is_likely_hallucination(text: str) -> bool:
+    """Filters out common Whisper hallucinations on silence/noise."""
+    cleaned = text.lower().strip().strip(".")
+    if len(cleaned) < 3:
+        return True
+    if cleaned in HALLUCINATION_PATTERNS:
+        return True
+    return False
 
 
 def monitor_for_interrupt(stop_event, cancel_event):
@@ -21,6 +41,10 @@ def monitor_for_interrupt(stop_event, cancel_event):
                 text = recognizer.recognize_whisper(
                     audio, model="small", language="english")
                 text_lower = text.lower().strip()
+
+                # Skip likely hallucinated/junk text instead of acting on it
+                if is_likely_hallucination(text_lower):
+                    continue
 
                 print(f"[interrupt check]: {text_lower}")
 
